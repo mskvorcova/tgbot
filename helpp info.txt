@@ -1,0 +1,6 @@
+https://api.openweathermap.org/data/2.5/forecast?lang=ru&q=Saint%20Petersburg&units=metric&appid=fdb5fb7907d39ba695179b6e052165a6
+погода прогноз
+
+https://api.openweathermap.org/data/2.5/weather?lang=ru&q=Saint%20Petersburg&units=metric&appid=fdb5fb7907d39ba695179b6e052165a6
+погода сейчас
+
