@@ -113,7 +113,17 @@ public class TelegramBot extends TelegramLongPollingBot {
         String ans = "привет, " + update.getMessage().getChat().getFirstName() + "! это бот помощник, " + 
                     "для начала установи город в котором находишься. для этого введи название города" + 
                     " и страны в которой этот город находится через пробел в таком порядке";
+        Optional<User> existingUser = repo.findById(chatId);
 
+        if (existingUser.isEmpty()) {
+            User newUser = new User();
+            System.out.println("получилось создать юзера");
+            newUser.setId(chatId); 
+            newUser.setCity("");
+            newUser.setCountry("");
+            repo.save(newUser);
+            sendMessage(chatId, "Добро пожаловать! Вы успешно зарегистрированы.");
+        }
         sendMessage(chatId, ans);
         state = status.WAIT_FOR_CITY;
     }
@@ -125,9 +135,13 @@ public class TelegramBot extends TelegramLongPollingBot {
     }
 
     private void getCommand(long chatId) {
+        Optional<User> existingUser = repo.findById(chatId);
+        User usr = existingUser.get();
+        String city = usr.getCity();
+        String country = usr.getCountry();
         String ans;
-        if (place.length != 0) {
-            ans = "выбранный город: " + place[0] + ", " + place[1];
+        if (city.length() != 0) {
+            ans = "выбранный город: " + city + ", " + country;
         }
         else {
             ans = "город не установлен";
