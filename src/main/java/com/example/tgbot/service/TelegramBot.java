@@ -1,10 +1,20 @@
 package com.example.tgbot.service;
 
+import java.io.IOException;
+import java.net.URLDecoder;
+import java.nio.charset.StandardCharsets;
+import java.text.ParseException;
+import java.util.ArrayList;
+import java.util.List;
+
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Component;
 import org.telegram.telegrambots.bots.TelegramLongPollingBot;
+import org.telegram.telegrambots.meta.api.methods.commands.SetMyCommands;
 import org.telegram.telegrambots.meta.api.methods.send.SendMessage;
 import org.telegram.telegrambots.meta.api.objects.Update;
+import org.telegram.telegrambots.meta.api.objects.commands.BotCommand;
+import org.telegram.telegrambots.meta.api.objects.commands.scope.BotCommandScopeDefault;
 import org.telegram.telegrambots.meta.exceptions.TelegramApiException;
 
 @Component 
@@ -13,13 +23,26 @@ public class TelegramBot extends TelegramLongPollingBot {
     final String botName;
     final String botToken;
     private status state = status.WAIT_FOR_COMMAND;
-    private String city;
-
+    private String[] place;
     public TelegramBot(@Value("${bot.name}") String botName, 
     @Value("${bot.token}") String botToken) {
         super(botToken);
         this.botName = botName;
         this.botToken = botToken;
+        List<BotCommand> commands = new ArrayList<>();
+        commands.add(new BotCommand("/start", "начать"));
+        commands.add(new BotCommand("/setcity", "поменять основной город"));
+        commands.add(new BotCommand("/currentcity", "установленный город"));
+        commands.add(new BotCommand("/getweather", "погода в текущем городе"));
+        commands.add(new BotCommand("/getforecast", "прогноз для текущего города"));
+        try {
+            SetMyCommands setMyCommands = new SetMyCommands();
+            setMyCommands.setCommands(commands);
+            setMyCommands.setScope(new BotCommandScopeDefault());
+            setMyCommands.setLanguageCode(null); 
+            execute(setMyCommands);
+        } catch (TelegramApiException e) {
+        }
     }
     
     @Override
@@ -29,7 +52,14 @@ public class TelegramBot extends TelegramLongPollingBot {
             long chatId = update.getMessage().getChatId();
             switch (state) {
                 case WAIT_FOR_COMMAND -> handleCommand(message, chatId, update);
-                case WAIT_FOR_CITY -> changeCity(message, chatId);
+                case WAIT_FOR_CITY -> {
+                    try {
+                        changeCity(message, chatId);
+                        state = status.WAIT_FOR_COMMAND;
+                    } catch (ParseException | IOException ex) {
+                    }
+                }
+
                 default -> sendMessage(chatId, "unknown command");
             }
         }
@@ -38,28 +68,36 @@ public class TelegramBot extends TelegramLongPollingBot {
     private void handleCommand(String cmd, long chatId, Update update) {
         switch (cmd) {
             case "/start" -> startCommand(chatId, update);
-            case "/change" -> changeCommand(chatId);
-            case "/currentCity" -> getCommand(chatId);
-            case "getWeather" -> weatherCommand(chatId);
+            case "/setcity" -> changeCommand(chatId);
+            case "/currentcity" -> getCommand(chatId);
+            case "/getweather" -> weatherCommand(chatId);
             default -> sendMessage(chatId, "Unknown command");
         }
     }
 
-    private void changeCity(String newCity, long chatId) {
-        city = newCity;
-        String msg = "город установлен: " + newCity;
-        sendMessage(chatId, msg);
-        state = status.WAIT_FOR_COMMAND;
+    private void changeCity(String newPlace, long chatId) throws ParseException, IOException {
+        String[] getPlace = newPlace.split(" ");
+        System.out.println(getPlace[0] + " " + getPlace[1]);
+        boolean checked = new CityValidator(getPlace).check();
+        if (checked) {
+            place = getPlace;
+            sendMessage(chatId, "город установлен");
+            state = status.WAIT_FOR_COMMAND;
+        }
+        else {
+            sendMessage(chatId, "такого города не существует, попробуйте еще раз");
+        }
     }
 
     private void weatherCommand(long chatId) {
-        WeatherService weather = new WeatherService(city);
-        String[] data = weather.parseJSON();
+        //WeatherService weather = new WeatherService(city);
+        //String[] data = weather.parseJSON();
     }
 
     private void startCommand(long chatId, Update update) {
-        String ans = "привет, " + update.getMessage().getChat().getFirstName() + "! это бот помощник," + 
-                    "для начала установи город в котором находишься :)";
+        String ans = "привет, " + update.getMessage().getChat().getFirstName() + "! это бот помощник, " + 
+                    "для начала установи город в котором находишься. для этого введи название города" + 
+                    " и страны в которой этот город находится через пробел в таком порядке";
 
         sendMessage(chatId, ans);
         state = status.WAIT_FOR_CITY;
@@ -73,11 +111,11 @@ public class TelegramBot extends TelegramLongPollingBot {
 
     private void getCommand(long chatId) {
         String ans;
-        if (!city.isEmpty()) {
-            ans = "выбранный город: " + city;
+        if (place.length != 0) {
+            ans = "выбранный город: " + place[0] + ", " + place[1];
         }
         else {
-            ans = "город не выбран";
+            ans = "город не установлен";
         }
         sendMessage(chatId, ans);
     }
@@ -85,7 +123,8 @@ public class TelegramBot extends TelegramLongPollingBot {
     private void sendMessage(long chatId, String text) {
         SendMessage msg = new SendMessage();
         msg.setChatId(String.valueOf(chatId));
-        msg.setText(text);
+        String decoded = URLDecoder.decode(text, StandardCharsets.UTF_8);
+        msg.setText(decoded);
         try {
             execute(msg);
         } catch (TelegramApiException e) {
