@@ -6,7 +6,9 @@ import java.nio.charset.StandardCharsets;
 import java.text.ParseException;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Optional;
 
+import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Component;
 import org.telegram.telegrambots.bots.TelegramLongPollingBot;
@@ -17,11 +19,16 @@ import org.telegram.telegrambots.meta.api.objects.commands.BotCommand;
 import org.telegram.telegrambots.meta.api.objects.commands.scope.BotCommandScopeDefault;
 import org.telegram.telegrambots.meta.exceptions.TelegramApiException;
 
+import com.example.tgbot.model.User;
+import com.example.tgbot.model.UserRepository;
+
 @Component 
 public class TelegramBot extends TelegramLongPollingBot {
 
     final String botName;
     final String botToken;
+    @Autowired
+    private UserRepository repo;
     private status state = status.WAIT_FOR_COMMAND;
     private String[] place;
     public TelegramBot(@Value("${bot.name}") String botName, 
@@ -77,16 +84,24 @@ public class TelegramBot extends TelegramLongPollingBot {
 
     private void changeCity(String newPlace, long chatId) throws ParseException, IOException {
         String[] getPlace = newPlace.split(" ");
-        System.out.println(getPlace[0] + " " + getPlace[1]);
         boolean checked = new CityValidator(getPlace).check();
         if (checked) {
             place = getPlace;
             sendMessage(chatId, "город установлен");
+            User usr = repo.findById(chatId).orElse(new User());
+            usr.setId(chatId);
+            usr.setCity(place[0]);
+            usr.setCountry(place[1]);
+            repo.save(usr);
             state = status.WAIT_FOR_COMMAND;
         }
         else {
             sendMessage(chatId, "такого города не существует, попробуйте еще раз");
         }
+    }
+
+    public Optional<User> getUserById(Long chatId) {
+        return repo.findById(chatId);
     }
 
     private void weatherCommand(long chatId) {
