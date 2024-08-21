@@ -8,5 +8,6 @@ public class WeatherService {
     public String[] parseJSON() {
         String[] res = {"a", "b", city};
         return res;
+        // TODO: добавить обработку json файла и выдавать погоду сейчас и прогноз
     }
 }
