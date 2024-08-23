@@ -14,18 +14,27 @@ public class UserService {
     @Autowired
     private UserRepository userRepository;
 
-    public void saveUserCity(Long chatId, String city, String country) {
+    public void createUser(long chatId) {
         User user = userRepository.findById(chatId).orElse(new User());
         user.setId(chatId);
-        user.setCity(city);
-        user.setCountry(country);
         userRepository.save(user);
     }
 
-    public Optional<User> getUserById(Long chatId) {
-        return userRepository.findById(chatId);
+    public void setCity(long chatId, String city) {
+        User user = userRepository.findById(chatId).orElse(new User());
+        user.setId(chatId);
+        user.setCity(city);
+        userRepository.save(user);
     }
 
-    
+    public String getCity(long chatId) {
+        Optional<User> existingUser = userRepository.findById(chatId);
+        String res = "";
+        if (existingUser.isPresent()) {
+            User usr = existingUser.get();
+            res = usr.getCity();
+        }
+        return res;
+    }
 }
 

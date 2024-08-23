@@ -12,7 +12,7 @@ import lombok.Setter;
 @Setter
 public class User {
     @Id
-    private Long id;
+    private long id;
     private String city;
     private String country;
 }
