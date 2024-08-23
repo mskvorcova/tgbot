@@ -31,4 +31,34 @@ public class WeatherService {
         sb.append("влажность: ").append(main.get("humidity").asText());     
         return sb.toString();
     }
+
+    public String getForecast(String place) throws IOException, ParseException {
+        place = URLEncoder.encode(place, StandardCharsets.UTF_8.toString());
+        String urlString = "https://api.openweathermap.org/data/2.5/forecast?lang=ru&q=" + 
+                            place + "&units=metric&appid=fdb5fb7907d39ba695179b6e052165a6";
+        String jsonString = new JsonInfo().getInfo(place, urlString);
+        JsonNode weatherArray = new ObjectMapper().readTree(jsonString).get("list");
+        StringBuilder sb = new StringBuilder();
+        int count = 0;
+        if (weatherArray.isArray()) {
+            for (JsonNode forecastNode : weatherArray) {
+                if (count >= 4) break; 
+
+                String dateTime = forecastNode.get("dt_txt").asText();
+                JsonNode weatherNode = forecastNode.get("weather").get(0);
+                String description = weatherNode.get("description").asText();
+                JsonNode mainNode = forecastNode.get("main");
+
+                sb.append("Прогноз на ").append(dateTime).append(":\n");
+                sb.append("Погода: ").append(description).append("\n");
+                sb.append("Температура: ").append(mainNode.get("temp").asText()).append("\n");
+                sb.append("Ощущается как: ").append(mainNode.get("feels_like").asText()).append("\n");
+                sb.append("Влажность: ").append(mainNode.get("humidity").asText()).append("\n\n");
+
+                count++;
+            }
+        }
+        
+        return sb.toString();
+    }
 }

@@ -17,6 +17,9 @@ public class ValidatorService {
     CityService cityService;
     public boolean mainCheck(String checkPlace) throws ParseException, IOException {
         checkPlace = URLEncoder.encode(checkPlace, StandardCharsets.UTF_8.toString());
+        if (cityService.cityExists(checkPlace)) {
+            return true;
+        }
         String urlString = "https://nominatim.openstreetmap.org/search?q=" + checkPlace + "&format=json";
         String jsonString = new JsonInfo().getInfo(checkPlace, urlString);
         JsonNode arrNode = new ObjectMapper().readTree(jsonString);

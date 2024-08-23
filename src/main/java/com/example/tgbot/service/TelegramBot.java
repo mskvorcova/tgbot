@@ -18,6 +18,8 @@ import org.telegram.telegrambots.meta.api.objects.commands.BotCommand;
 import org.telegram.telegrambots.meta.api.objects.commands.scope.BotCommandScopeDefault;
 import org.telegram.telegrambots.meta.exceptions.TelegramApiException;
 
+import com.vdurmont.emoji.EmojiParser;
+
 @Component 
 public class TelegramBot extends TelegramLongPollingBot {
 
@@ -40,7 +42,7 @@ public class TelegramBot extends TelegramLongPollingBot {
         commands.add(new BotCommand("/setcity", "поменять основной город"));
         commands.add(new BotCommand("/currentcity", "установленный город"));
         commands.add(new BotCommand("/getweather", "погода в текущем городе"));
-        //commands.add(new BotCommand("/getforecast", "прогноз для текущего города"));
+        commands.add(new BotCommand("/getforecast", "прогноз для текущего города"));
         try {
             SetMyCommands setMyCommands = new SetMyCommands();
             setMyCommands.setCommands(commands);
@@ -79,7 +81,8 @@ public class TelegramBot extends TelegramLongPollingBot {
             case "/start" -> startCommand(chatId, update);
             case "/setcity" -> changeCommand(chatId);
             case "/currentcity" -> getCommand(chatId);
-            case "/getweather" -> weatherCommand(chatId, update);
+            case "/getweather" -> handleWeather(chatId, update, true);
+            case "/getforecast" -> handleWeather(chatId, update, false);
             default -> sendMessage(chatId, "Unknown command");
         }
     }
@@ -90,34 +93,51 @@ public class TelegramBot extends TelegramLongPollingBot {
             sendMessage(chatId, "Ошибка: Пожалуйста, введите корректные город и страну.");
             return;
         }
-        boolean checked = validatorService.mainCheck(newPlace);
-        if (checked) {
-            sendMessage(chatId, "город установлен");
+        if (checkPlace(newPlace, chatId)) {
             userService.setCity(chatId, newPlace);
             state = status.WAIT_FOR_COMMAND;
+            sendMessage(chatId, "ура город установлен");
+        }
+    }
+
+    private boolean checkPlace(String place, long chatId) throws ParseException, IOException {
+        boolean checked = validatorService.mainCheck(place);
+        if (checked) {
+            return checked;
         }
         else {
             sendMessage(chatId, "такого города не существует, попробуйте еще раз");
+            return checked;
         }
-        
     }
 
-    private void weatherCommand(long chatId, Update update) throws IOException, ParseException {
+    private void handleWeather(long chatId, Update update, boolean flag) throws IOException, ParseException {
         String place;
         String[] cmd = update.getMessage().getText().trim().split(" ");
         if (cmd.length == 1) {
             place = userService.getCity(chatId);
         } else {
-            place = cmd[1];
+            if (checkPlace(cmd[1], chatId)) {
+                place = cmd[1];
+            }
+            else {
+                return;
+            }
         }
-        String msg = weatherService.getWeather(place);
+        String msg;
+        if (flag) {
+            msg = weatherService.getWeather(place);
+        }
+        else {
+            
+            msg = weatherService.getForecast(place);
+            System.out.println(msg);
+        } 
         sendMessage(chatId, msg);
     }
 
     private void startCommand(long chatId, Update update) {
-        String ans = "привет, " + update.getMessage().getChat().getFirstName() + "! " + 
-                    "введи через пробел название города" + 
-                    " и страны в которой этот город находится";
+        String ans = EmojiParser.parseToUnicode(":slightly_smiling_face:");
         userService.createUser(chatId);
         sendMessage(chatId, ans);
         state = status.WAIT_FOR_CITY;
