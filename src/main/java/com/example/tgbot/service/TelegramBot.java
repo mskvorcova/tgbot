@@ -38,11 +38,12 @@ public class TelegramBot extends TelegramLongPollingBot {
         this.botName = botName;
         this.botToken = botToken;
         List<BotCommand> commands = new ArrayList<>();
-        commands.add(new BotCommand("/start", "начать"));
-        commands.add(new BotCommand("/setcity", "поменять основной город"));
-        commands.add(new BotCommand("/currentcity", "установленный город"));
-        commands.add(new BotCommand("/getweather", "погода в текущем городе"));
-        commands.add(new BotCommand("/getforecast", "прогноз для текущего города"));
+        commands.add(new BotCommand("/start", "Приветствие и начало работы с ботом"));
+        commands.add(new BotCommand("/setcity", "Выберите или измените основной город"));
+        commands.add(new BotCommand("/currentcity", "Узнайте текущий установленный город"));
+        commands.add(new BotCommand("/getweather", "Получите текущую погоду в выбранном городе"));
+        commands.add(new BotCommand("/getforecast", "Получите прогноз погоды для города"));
+        commands.add(new BotCommand("/help", "помощь"));
         try {
             SetMyCommands setMyCommands = new SetMyCommands();
             setMyCommands.setCommands(commands);
@@ -83,20 +84,34 @@ public class TelegramBot extends TelegramLongPollingBot {
             case "/currentcity" -> getCommand(chatId);
             case "/getweather" -> handleWeather(chatId, update, true);
             case "/getforecast" -> handleWeather(chatId, update, false);
+            case "/help" -> helpCommand(chatId);
             default -> sendMessage(chatId, "Unknown command");
         }
     }
 
+    private void helpCommand(long chatId) {
+        String ans = EmojiParser.parseToUnicode("""
+                     Привет! :wave: Я ваш бот-помощник, и вот что я умею:
+
+                     /start — Запустить бота и получить приветственное сообщение :star2:
+                     /setcity — Установить или изменить основной город, для которого будет предоставляться информация :world_map:
+                     /currentcity — Узнать, какой город установлен в качестве основного :cityscape:
+                     /getweather — Получить текущую погоду в установленном или указанном городе :sunny:
+                     /help — Показать это сообщение с инструкциями :memo:
+
+                     """);
+        sendMessage(chatId, ans);
+    }
     private void changeCity(String newPlace, long chatId) throws ParseException, IOException {
         newPlace = newPlace.trim();
         if (newPlace.isEmpty()) {
-            sendMessage(chatId, "Ошибка: Пожалуйста, введите корректные город и страну.");
+            sendMessage(chatId, "Ошибка: Пожалуйста, введите название города. Например: \"Москва\".");
             return;
         }
         if (checkPlace(newPlace, chatId)) {
             userService.setCity(chatId, newPlace);
             state = status.WAIT_FOR_COMMAND;
-            sendMessage(chatId, "ура город установлен");
+            sendMessage(chatId, "Город успешно установлен 🎉");
         }
     }
 
@@ -106,7 +121,7 @@ public class TelegramBot extends TelegramLongPollingBot {
             return checked;
         }
         else {
-            sendMessage(chatId, "такого города не существует, попробуйте еще раз");
+            sendMessage(chatId, "К сожалению, этот город не найден. Пожалуйста, попробуйте еще раз.");
             return checked;
         }
     }
@@ -137,26 +152,35 @@ public class TelegramBot extends TelegramLongPollingBot {
     }
 
     private void startCommand(long chatId, Update update) {
-        String ans = EmojiParser.parseToUnicode(":slightly_smiling_face:");
+        String ans = EmojiParser.parseToUnicode("Привет, " + update.getMessage().getChat().getFirstName() + "!:star2: \n" +
+        "Я ваш бот-помощник. Чтобы начать, выберите одну из команд:\n" +
+        "/setcity — чтобы установить или изменить основной город :world_map: \n" +
+        "/currentcity — чтобы узнать, какой город у вас установлен :cityscape: \n" +
+        "/getweather — чтобы получить текущую погоду в выбранном городе :sunny:\n" +
+        "/getforecast — для получения прогноза погоды на ближайшие 12 часов :cloud:\n" +
+        "/help — для получения списка всех команд :question:\n");
         userService.createUser(chatId);
         sendMessage(chatId, ans);
-        state = status.WAIT_FOR_CITY;
     }
 
-    private void changeCommand(long chatId) {
-        String ans = "отправь в следующем сообщении город, для которого хочешь получать прогнозы";
-        sendMessage(chatId, ans);
-        state = status.WAIT_FOR_CITY;
-    }
+     private void changeCommand(long chatId) {
+         String ans = EmojiParser.parseToUnicode("""
+                 Отлично! :star2: Теперь напишите мне название города,\
+                  который вы хотите установить в качестве основного. 
+                 Например: "Москва" или "Санкт-Петербург".""");
+         sendMessage(chatId, ans);
+         state = status.WAIT_FOR_CITY;
+     }
 
     private void getCommand(long chatId) {
         String place = userService.getCity(chatId);
         String ans;
         if (place.length() != 0) {
-            ans = "выбранный город: " + place;
+            ans = "Ваш основной город: " + place;
         }
         else {
-            ans = "город не установлен";
+            ans = "У вас пока не установлен основной город." + 
+            "Используйте команду /setcity, чтобы его установить!";
         }
         sendMessage(chatId, ans);
     }
