@@ -16,7 +16,7 @@ public class WeatherService {
     public String getWeather(String place) throws IOException, ParseException {
         place = URLEncoder.encode(place, StandardCharsets.UTF_8.toString());
         String urlString = "https://api.openweathermap.org/data/2.5/weather?lang=ru&q=" + 
-                            place + "&units=metric&appid=fdb5fb7907d39ba695179b6e052165a6";
+                            place + "&units=metric&appid=";
         String jsonString = new JsonInfo().getInfo(place, urlString);
         JsonNode weatherArray = new ObjectMapper().readTree(jsonString).get("weather");
         StringBuilder sb = new StringBuilder();
@@ -35,7 +35,7 @@ public class WeatherService {
     public String getForecast(String place) throws IOException, ParseException {
         place = URLEncoder.encode(place, StandardCharsets.UTF_8.toString());
         String urlString = "https://api.openweathermap.org/data/2.5/forecast?lang=ru&q=" + 
-                            place + "&units=metric&appid=fdb5fb7907d39ba695179b6e052165a6";
+                            place + "&units=metric&appid=";
         String jsonString = new JsonInfo().getInfo(place, urlString);
         JsonNode weatherArray = new ObjectMapper().readTree(jsonString).get("list");
         StringBuilder sb = new StringBuilder();
